@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Café Dashboard – Vanilla JS</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700&display=swap">
+<style>
+:root{
+  --bg:#fff0f5; --surface:#fff; --ink:#4a2338; --muted:#7d566b;
+  --brand:#c93a6e; --on-brand:#fff; --accent:#ffb3cf; --line:#f7cfdf;
+  --ok:#1f7a4d; --warn:#b4540a;
+  --head:"Fredoka","Segoe UI",system-ui,sans-serif;
+  --body:"Nunito","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#2a1420;--surface:#3a1d2d;--ink:#ffe8f0;--muted:#e2b5c8;--brand:#ff9ec2;--on-brand:#3a1020;--accent:#ff9ec2;--line:#5c2d44;--ok:#6ee0a4;--warn:#ffb36b;color-scheme:dark}
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.6 var(--body);padding:1.25rem}
+.app{max-width:64rem;margin:0 auto}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.15}
+h1{font-size:clamp(1.8rem,1.2rem + 3vw,2.8rem)}
+header p{color:var(--muted);margin:.25rem 0 1.25rem}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.75rem;margin-bottom:1.25rem}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:1.25rem;padding:.9rem 1.1rem}
+.stat b{display:block;font:700 1.7rem var(--head)}
+.stat span{color:var(--muted);font-size:.9rem}
+
+.controls{background:var(--surface);border:1px solid var(--line);border-radius:1.5rem;padding:1rem;display:grid;gap:.9rem;margin-bottom:1.25rem}
+.row{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
+.field{flex:1 1 14rem;display:flex;flex-direction:column;gap:.25rem}
+label{font:600 .9rem var(--head);color:var(--muted)}
+input[type=search],select{font:inherit;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:999px;padding:.6rem 1rem;width:100%}
+input[type=search]:focus,select:focus{border-color:var(--brand);outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem}
+.chip,.reset{font:600 .95rem var(--head);border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:.4rem 1rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+.reset{border-color:var(--brand);color:var(--brand);background:transparent}
+.toggle{display:flex;align-items:center;gap:.5rem;font:600 .95rem var(--head);cursor:pointer}
+.toggle input{width:1.15rem;height:1.15rem;accent-color:var(--brand)}
+#count{color:var(--muted);margin:0 0 .75rem;font-weight:600}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:1rem;list-style:none;margin:0;padding:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:1.5rem;padding:1.1rem;display:flex;flex-direction:column;gap:.4rem}
+.card .top{display:flex;justify-content:space-between;align-items:start;gap:.5rem}
+.card h3{font-size:1.2rem}
+.tag{font:600 .8rem var(--head);background:var(--accent);color:#4a2338;border-radius:999px;padding:.15rem .7rem;white-space:nowrap}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:.95rem;margin-top:auto}
+.price{font:700 1.4rem var(--head);color:var(--brand)}
+.stock.low{color:var(--warn);font-weight:700}
+.stock.ok{color:var(--ok);font-weight:700}
+mark{background:var(--accent);color:#4a2338;border-radius:.25rem;padding:0 .15rem}
+.empty{text-align:center;background:var(--surface);border:2px dashed var(--line);border-radius:1.5rem;padding:2rem}
+.empty[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.card{transition:transform .15s}.card:hover{transform:translateY(-3px)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🌸 Café menu dashboard</h1>
+    <p>Search, filter and sort items. Results update as you type.</p>
+  </header>
+
+  <section class="stats" aria-label="Summary of visible items" aria-live="polite">
+    <div class="stat"><b id="s-items">0</b><span>Items shown</span></div>
+    <div class="stat"><b id="s-avg">₹0</b><span>Average price</span></div>
+    <div class="stat"><b id="s-low">0</b><span>Low stock</span></div>
+    <div class="stat"><b id="s-rate">0</b><span>Average rating</span></div>
+  </section>
+
+  <section class="controls" aria-label="Filters">
+    <div class="row">
+      <div class="field">
+        <label for="q">Search by name</label>
+        <input id="q" type="search" placeholder="Try “latte” or “bun”" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="sort">Sort by</label>
+        <select id="sort">
+          <option value="name">Name (A–Z)</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+          <option value="rating">Top rated</option>
+          <option value="stock">Lowest stock first</option>
+        </select>
+      </div>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Category"></div>
+    <div class="row">
+      <label class="toggle"><input type="checkbox" id="low"> Low stock only</label>
+      <button class="reset" id="reset" type="button">Clear filters</button>
+    </div>
+  </section>
+
+  <p id="count" aria-live="polite"></p>
+  <ul class="grid" id="grid"></ul>
+  <div class="empty" id="empty" hidden>
+    <h2>No items match</h2>
+    <p>Try a different word, or clear the filters to see everything.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  // 1. Data
+  const items = [
+    { name: "Flat white", cat: "Coffee", price: 150, stock: 40, rating: 4.8 },
+    { name: "Cappuccino", cat: "Coffee", price: 140, stock: 35, rating: 4.6 },
+    { name: "Iced latte", cat: "Cold", price: 160, stock: 8, rating: 4.5 },
+    { name: "Cold brew", cat: "Cold", price: 140, stock: 22, rating: 4.7 },
+    { name: "Strawberry milk", cat: "Cold", price: 130, stock: 5, rating: 4.4 },
+    { name: "Pour-over", cat: "Coffee", price: 180, stock: 14, rating: 4.9 },
+    { name: "Masala chai", cat: "Tea", price: 90, stock: 60, rating: 4.7 },
+    { name: "Rose green tea", cat: "Tea", price: 110, stock: 9, rating: 4.3 },
+    { name: "Cardamom bun", cat: "Bakery", price: 120, stock: 12, rating: 4.9 },
+    { name: "Chocolate croissant", cat: "Bakery", price: 150, stock: 6, rating: 4.6 },
+    { name: "Berry cupcake", cat: "Bakery", price: 100, stock: 18, rating: 4.5 },
+    { name: "Whole-bean bag", cat: "Coffee", price: 550, stock: 25, rating: 4.8 }
+  ];
+  const LOW = 10;
+
+  // 2. State
+  const state = { q: "", cat: "All", low: false, sort: "name" };
+
+  // 3. Elements
+  const $ = id => document.getElementById(id);
+  const grid = $("grid"), empty = $("empty"), count = $("count"), chips = $("chips");
+
+  // 4. Category chips
+  ["All", ...new Set(items.map(i => i.cat))].forEach(c => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = c;
+    b.dataset.cat = c;
+    chips.appendChild(b);
+  });
+
+  // 5. Filter + sort
+  function getVisible() {
+    const q = state.q.trim().toLowerCase();
+    const list = items.filter(i =>
+      (state.cat === "All" || i.cat === state.cat) &&
+      (!state.low || i.stock <= LOW) &&
+      (!q || i.name.toLowerCase().includes(q))
+    );
+    const sorters = {
+      "name": (a, b) => a.name.localeCompare(b.name),
+      "price-asc": (a, b) => a.price - b.price,
+      "price-desc": (a, b) => b.price - a.price,
+      "rating": (a, b) => b.rating - a.rating,
+      "stock": (a, b) => a.stock - b.stock
+    };
+    return list.sort(sorters[state.sort]);
+  }
+
+  // 6. Render (uses textContent, never innerHTML, so input is always safe)
+  function highlight(el, text, q) {
+    const i = q ? text.toLowerCase().indexOf(q) : -1;
+    if (i < 0) { el.textContent = text; return; }
+    el.append(text.slice(0, i));
+    const m = document.createElement("mark");
+    m.textContent = text.slice(i, i + q.length);
+    el.append(m, text.slice(i + q.length));
+  }
+
+  function makeCard(item, q) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const top = document.createElement("div"); top.className = "top";
+    const h = document.createElement("h3"); highlight(h, item.name, q);
+    const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = item.cat;
+    top.append(h, tag);
+    const price = document.createElement("div"); price.className = "price"; price.textContent = "₹" + item.price;
+    const meta = document.createElement("div"); meta.className = "meta";
+    const stock = document.createElement("span");
+    const isLow = item.stock <= LOW;
+    stock.className = "stock " + (isLow ? "low" : "ok");
+    stock.textContent = isLow ? `Only ${item.stock} left` : `${item.stock} in stock`;
+    const rate = document.createElement("span"); rate.textContent = "★ " + item.rating.toFixed(1);
+    meta.append(stock, rate);
+    li.append(top, price, meta);
+    return li;
+  }
+
+  function render() {
+    const list = getVisible();
+    const q = state.q.trim().toLowerCase();
+    grid.replaceChildren(...list.map(i => makeCard(i, q)));
+    empty.hidden = list.length > 0;
+    count.textContent = `Showing ${list.length} of ${items.length} items`;
+
+    const n = list.length;
+    $("s-items").textContent = n;
+    $("s-avg").textContent = "₹" + (n ? Math.round(list.reduce((s, i) => s + i.price, 0) / n) : 0);
+    $("s-low").textContent = list.filter(i => i.stock <= LOW).length;
+    $("s-rate").textContent = n ? (list.reduce((s, i) => s + i.rating, 0) / n).toFixed(1) : "0";
+
+    chips.querySelectorAll(".chip").forEach(c =>
+      c.setAttribute("aria-pressed", String(c.dataset.cat === state.cat)));
+  }
+
+  // 7. Events
+  $("q").addEventListener("input", e => { state.q = e.target.value; render(); });
+  $("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+  $("low").addEventListener("change", e => { state.low = e.target.checked; render(); });
+  chips.addEventListener("click", e => {
+    const b = e.target.closest(".chip");
+    if (b) { state.cat = b.dataset.cat; render(); }
+  });
+  $("reset").addEventListener("click", () => {
+    Object.assign(state, { q: "", cat: "All", low: false, sort: "name" });
+    $("q").value = ""; $("sort").value = "name"; $("low").checked = false;
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
